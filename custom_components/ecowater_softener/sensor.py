@@ -1,95 +1,8 @@
-from collections.abc import Callable
-from dataclasses import dataclass
-
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.const import (
-    UnitOfVolume,
-    UnitOfTime,
-    PERCENTAGE,
-)
-
-from .const import (
-    DOMAIN,
-    STATUS,
-    DAYS_UNTIL_OUT_OF_SALT,
-    OUT_OF_SALT_ON,
-    SALT_LEVEL_PERCENTAGE,
-    WATER_USAGE_TODAY,
-    WATER_USAGE_DAILY_AVERAGE,
-    WATER_AVAILABLE,
-    RECHARGE_ENABLED,
-    RECHARGE_SCHEDULED,
-)
-
-
-from .coordinator import EcowaterDataCoordinator
+from homeassistant.helpers.translation import async_get_translations
 
 @dataclass
 class EcowaterSensorEntityDescription(SensorEntityDescription):
-        """A class that describes sensor entities"""
-
-SENSOR_TYPES: tuple[EcowaterSensorEntityDescription, ...] = (
-    EcowaterSensorEntityDescription(
-        key=STATUS,
-        name="Status",
-        icon="mdi:power",
-    ),
-    EcowaterSensorEntityDescription(
-        key=WATER_AVAILABLE,
-        name="Water Available",
-        icon="mdi:water",
-        device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.TOTAL,
-    ),
-    EcowaterSensorEntityDescription(
-        key=WATER_USAGE_TODAY,
-        name="Water Used Today",
-        icon="mdi:water",
-        device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-    ),
-    EcowaterSensorEntityDescription(
-        key=WATER_USAGE_DAILY_AVERAGE,
-        name="Water Used Per Day Average",
-        icon="mdi:water",
-    ),
-    EcowaterSensorEntityDescription(
-        key=SALT_LEVEL_PERCENTAGE,
-        name="Salt Level Percentage",
-        icon="mdi:altimeter",
-        native_unit_of_measurement=PERCENTAGE,
-    ),
-    EcowaterSensorEntityDescription(
-        key=OUT_OF_SALT_ON,
-        name="Out of salt on",
-        icon="mdi:calendar",
-    ),
-    EcowaterSensorEntityDescription(
-        key=DAYS_UNTIL_OUT_OF_SALT,
-        name="Days until out of salt",
-        icon="mdi:calendar",
-        native_unit_of_measurement=UnitOfTime.DAYS,
-    ),
-    EcowaterSensorEntityDescription(
-        key=RECHARGE_ENABLED,
-        name="Recharged enabled",
-    ),
-    EcowaterSensorEntityDescription(
-        key=RECHARGE_SCHEDULED,
-        name="Recharged scheduled",
-    ),
-)
+    """A class that describes sensor entities."""
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -101,12 +14,14 @@ async def async_setup_entry(
     if config_entry.options:
         config.update(config_entry.options)
 
-    coordinator = EcowaterDataCoordinator(hass, config['username'], config['password'], config['serialnumber'], config['dateformat']) 
-
+    coordinator = EcowaterDataCoordinator(hass, config['username'], config['password'], config['serialnumber'], config['dateformat'])
     await coordinator.async_config_entry_first_refresh()
 
+    # Retrieve translations for the domain
+    translations = await async_get_translations(hass, hass.language, DOMAIN)
+
     async_add_entities(
-        EcowaterSensor(coordinator, description, config['serialnumber'])
+        EcowaterSensor(coordinator, description, config['serialnumber'], translations)
         for description in SENSOR_TYPES
     )
 
@@ -116,14 +31,12 @@ class EcowaterSensor(
 ):
     """Implementation of an ecowater sensor."""
 
-    _attr_has_entity_name = True
-    entity_description: EcowaterSensorEntityDescription
-
     def __init__(
         self,
         coordinator: EcowaterDataCoordinator,
         description: EcowaterSensorEntityDescription,
         serialnumber,
+        translations,
     ) -> None:
         """Initialize the ecowater sensor."""
         super().__init__(coordinator)
@@ -132,6 +45,9 @@ class EcowaterSensor(
         self._attr_native_value = coordinator.data[self.entity_description.key]
         self._serialnumber = serialnumber
 
+        # Apply translation
+        self._attr_name = translations.get('sensor.' + self.entity_description.key, self.entity_description.name)
+
     @property
     def native_unit_of_measurement(self) -> StateType:
         if self.entity_description.key.startswith('water'):
@@ -139,7 +55,7 @@ class EcowaterSensor(
                 return UnitOfVolume.LITERS
             elif self.coordinator.data['water_units'].lower() == 'gallons':
                 return UnitOfVolume.GALLONS
-        elif self.entity_description.native_unit_of_measurement != None:
+        elif self.entity_description.native_unit_of_measurement is not None:
             return self.entity_description.native_unit_of_measurement
 
     @callback
@@ -153,6 +69,6 @@ class EcowaterSensor(
         """Return the device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._serialnumber)},
-            name="Ecowater " + self._serialnumber,
+            name="Ecowater " + self.serialnumber,
             manufacturer="Ecowater",
         )

@@ -12,5 +12,16 @@
         "title": "Setup"
       }
     }
+  },
+  "sensor": {
+    "status": "Status",
+    "water_available": "Water Available",
+    "water_used_today": "Water Used Today",
+    "water_used_per_day_average": "Water Used Per Day Average",
+    "salt_level_percentage": "Salt Level Percentage",
+    "out_of_salt_on": "Out of Salt On",
+    "days_until_out_of_salt": "Days Until Out of Salt",
+    "recharge_enabled": "Recharge Enabled",
+    "recharge_scheduled": "Recharge Scheduled"
   }
 }

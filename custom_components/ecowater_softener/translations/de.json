@@ -12,5 +12,16 @@
         "title": "Einrichtung"
       }
     }
-  }
+},
+"sensor": {
+  "status": "Status",
+  "water_available": "Eau disponnible",
+  "water_used_today": "Eau utilisée aujourd'hui",
+  "water_used_per_day_average": "Moyenne d'eau par jour",
+  "salt_level_percentage": "Pourcentage sel",
+  "out_of_salt_on": "A cours de sel le",
+  "days_until_out_of_salt": "Jour restant avant manque de sel",
+  "recharge_enabled": "Restauration activée",
+  "recharge_scheduled": "Restauration programmée"
+}
 }
